@@ -92,6 +92,9 @@ IMGMANIFESTDIR = "${WORKDIR}/image-task-manifest"
 
 IMAGE_OUTPUT_MANIFEST_DIR = "${WORKDIR}/deploy-image-output-manifest"
 IMAGE_OUTPUT_MANIFEST = "${IMAGE_OUTPUT_MANIFEST_DIR}/manifest.json"
+IMAGE_INSTALL_NODEPS ?= ""
+IMAGE_INSTALL_NODEPS[type] = "list"
+export PACKAGE_INSTALL_NODEPS ?= "${IMAGE_INSTALL_NODEPS}"
 
 # Images are generally built explicitly, do not need to be part of world.
 EXCLUDE_FROM_WORLD = "1"
