@@ -115,6 +115,7 @@ python __anonymous () {
         prefixes = (d.getVar("MULTILIB_VARIANTS") or "").split()
         clsextend = oe.classextend.ClassExtender(variant, prefixes, d)
         clsextend.set_filter("PACKAGE_INSTALL", deps=False)
+        clsextend.set_filter("PACKAGE_INSTALL_NODEPS", deps=False)
         clsextend.set_filter("LINGUAS_INSTALL", deps=False)
         clsextend.set_filter("RDEPENDS", deps=True)
         pinstall = d.getVar("LINGUAS_INSTALL") + " " + d.getVar("PACKAGE_INSTALL")
