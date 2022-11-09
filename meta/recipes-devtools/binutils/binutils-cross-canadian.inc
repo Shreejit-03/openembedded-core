@@ -35,3 +35,5 @@ do_install () {
 }
 
 BBCLASSEXTEND = ""
+
+FILES_${PN}-staticdev:append = " ${libdir}/bfd-plugins/lib*.a"
