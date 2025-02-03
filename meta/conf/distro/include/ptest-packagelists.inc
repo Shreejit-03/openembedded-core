@@ -83,6 +83,7 @@ PTESTS_FAST = "\
     qemu \
     quilt \
     rpm-sequoia \
+    run-postinsts \
     sed \
     slang \
     wayland \
