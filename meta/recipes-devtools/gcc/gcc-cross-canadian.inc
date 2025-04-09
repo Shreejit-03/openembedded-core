@@ -121,11 +121,6 @@ do_install () {
 	# We don't care about the gcc-<version> copies
 	rm -f ${D}${bindir}/*gcc-${BINV}*
 
-        # Remove buildpaths from pthread.h
-        sed -i -e "s|${RECIPE_SYSROOT_NATIVE}|/not/exist|g" \
-        -e "s|${RECIPE_SYSROOT}|/not/exist|g" \
-        ${D}${libdir}/gcc/${TARGET_SYS}/${BINV}/include-fixed/pthread.h
-
 	# Cleanup empty directories which are not shipped
 	# we use rmdir instead of 'rm -f' to ensure the non empty directories are not deleted
 	# ${D}${libdir}/../lib only seems to appear with SDKMACHINE=i686
@@ -182,6 +177,8 @@ do_install () {
 			done
 		done
 	done
+
+	cleanup_installed_include_fixed
 }
 
 ELFUTILS = "nativesdk-elfutils"
