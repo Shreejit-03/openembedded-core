@@ -103,6 +103,7 @@ PTESTS_SLOW = "\
     libevent \
     libgcrypt \
     libmodule-build-perl \
+    libpng \
     lttng-tools \
     openssh \
     openssl \
