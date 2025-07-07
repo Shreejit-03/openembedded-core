@@ -391,7 +391,11 @@ fitimage_emit_section_config() {
 	# conf node name is selected based on dtb ID if it is present,
 	# otherwise its selected based on kernel ID
 	if [ -n "$dtb_image" ]; then
-		conf_node=$conf_node$dtb_image
+		# DeviceCode in uboot env for NI devices is of format 0x76D6.
+		# And since bootscript.txt can't remove '0x' from DeviceCode before
+		# calling bootm, change FDT configuration node instead to add '0x'.
+		conf_node_dtb_image_name=ni-0x${dtb_image#*-}
+		conf_node=$conf_node$conf_node_dtb_image_name
 	else
 		conf_node=$conf_node$kernel_id
 	fi
