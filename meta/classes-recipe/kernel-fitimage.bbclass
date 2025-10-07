@@ -210,7 +210,7 @@ fitimage_emit_section_boot_script() {
 	bootscr_sign_keyname="${UBOOT_SIGN_IMG_KEYNAME}"
 
         cat << EOF >> $1
-                bootscr-$2 {
+                bootscript@$2 {
                         description = "U-boot script";
                         data = /incbin/("$3");
                         type = "script";
