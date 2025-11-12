@@ -111,8 +111,8 @@ do_install () {
 
 	ln -sf /proc/mounts ${D}${sysconfdir}/mtab
 
-	install -m 0644 ${WORKDIR}/share/dot.profile ${D}${ROOT_HOME}/.profile
-	install -m 0644 ${WORKDIR}/share/dot.bashrc ${D}${ROOT_HOME}/.bashrc
+	install -m 0644 ${S}/share/dot.profile ${D}${ROOT_HOME}/.profile
+	install -m 0644 ${S}/share/dot.bashrc ${D}${ROOT_HOME}/.bashrc
 
 	# deal with hostname
 	if [ "${hostname}" ]; then
