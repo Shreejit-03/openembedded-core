@@ -1029,9 +1029,13 @@ def collect_build_package_inputs(d, objset, build, packages, files_by_hash=None)
                 files_by_hash.setdefault(h, set()).update(f)
 
     if missing_providers:
-        bb.fatal(
-            f"Unable to find SPDX provider(s) for: {', '.join(sorted(missing_providers))}"
-        )
+        if d.getVar("BUILD_IMAGES_FROM_FEEDS") == "1":
+            for p in sorted(missing_providers):
+                bb.warn(f"Skipping SPDX provider for package {p}.")
+        else:
+            bb.fatal(
+                f"Unable to find SPDX provider(s) for: {', '.join(sorted(missing_providers))}"
+            )
 
     if build_deps:
         objset.new_scoped_relationship(
