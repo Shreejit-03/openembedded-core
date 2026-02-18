@@ -275,7 +275,7 @@ class Partition():
         self.source_file = rootfs
 
         # get the rootfs size in the right units for kickstart (kB)
-        du_cmd = "du -Lbks %s" % rootfs
+        du_cmd = "du --apparent-size -Lks %s" % rootfs
         out = exec_cmd(du_cmd)
         self.size = int(out.split()[0])
 
@@ -389,7 +389,7 @@ class Partition():
         """
         Prepare content for a msdos/vfat rootfs partition.
         """
-        du_cmd = "du -bks %s" % rootfs_dir
+        du_cmd = "du --apparent-size -ks %s" % rootfs_dir
         out = exec_cmd(du_cmd)
         blocks = int(out.split()[0])
 

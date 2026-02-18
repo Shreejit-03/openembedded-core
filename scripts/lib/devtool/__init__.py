@@ -74,12 +74,13 @@ def exec_watch(cmd, **options):
 
     return buf, None
 
-def exec_fakeroot_no_d(fakerootcmd, fakerootenv, cmd, **kwargs):
+def exec_fakeroot_no_d(fakerootcmd, fakerootenv, path, cmd, **kwargs):
     if not os.path.exists(fakerootcmd):
         logger.error('pseudo executable %s could not be found - have you run a build yet? pseudo-native should install this and if you have run any build then that should have been built')
         return 2
     # Set up the appropriate environment
     newenv = dict(os.environ)
+    newenv['PATH'] = path
     for varvalue in fakerootenv.split():
         if '=' in varvalue:
             splitval = varvalue.split('=', 1)
@@ -248,6 +249,10 @@ def setup_git_repo(repodir, version, devbranch, basetag='devtool-base', d=None):
                     remote_url = stdout.splitlines()[0]
                     logger.error(os.path.relpath(os.path.join(root, ".."), root))
                     bb.process.run('git submodule add %s %s' % (remote_url, os.path.relpath(root, os.path.join(root, ".."))), cwd=os.path.join(root, ".."))
+                    # Do not descend into nested git repos that have submodules themselves.
+                    if ".gitmodules" in files:
+                        logger.warning('Nested git repository with submodules %s; devtool will not recurse into it', root)
+                        dirs[:] = []
                     found = True
                 if found:
                     oe.patch.GitApplyTree.commitIgnored("Add additional submodule from SRC_URI", dir=os.path.join(root, ".."), d=d)

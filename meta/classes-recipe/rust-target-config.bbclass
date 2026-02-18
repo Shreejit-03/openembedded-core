@@ -77,6 +77,8 @@ def llvm_features_from_tune(d):
         f.append("+a15")
     if 'cortexa17' in feat:
         f.append("+a17")
+    if 'cortexa57' in feat:
+        f.append("+v8a")
     if 'rv' in feat:
         if 'm' in feat:
             f.append("+m")
@@ -385,7 +387,7 @@ def rust_gen_target(d, thing, wd, arch):
     if tspec['data-layout'] is None:
         bb.fatal("No rust target defined for %s" % arch_abi)
     tspec['max-atomic-width'] = int(d.getVarFlag('MAX_ATOMIC_WIDTH', arch_abi))
-    tspec['target-pointer-width'] = d.getVarFlag('TARGET_POINTER_WIDTH', arch_abi)
+    tspec['target-pointer-width'] = int(d.getVarFlag('TARGET_POINTER_WIDTH', arch_abi))
     tspec['target-c-int-width'] = int(d.getVarFlag('TARGET_C_INT_WIDTH', arch_abi))
     tspec['target-endian'] = d.getVarFlag('TARGET_ENDIAN', arch_abi)
     tspec['arch'] = arch_to_rust_target_arch(rust_arch)
@@ -405,7 +407,7 @@ def rust_gen_target(d, thing, wd, arch):
         tspec['llvm-abiname'] = "lp64d"
     if "powerpc64le" in tspec['llvm-target']:
         tspec['llvm-abiname'] = "elfv2"
-    if "powerpc64" in tspec['llvm-target']:
+    elif "powerpc64" in tspec['llvm-target']:
         tspec['llvm-abiname'] = "elfv1"
     tspec['vendor'] = "unknown"
     tspec['target-family'] = "unix"
@@ -418,6 +420,7 @@ def rust_gen_target(d, thing, wd, arch):
         tspec['llvm-floatabi'] = "soft"
     elif fpu == "hard":
         tspec['llvm-floatabi'] = "hard"
+    tspec['default-uwtable'] = True
     tspec['dynamic-linking'] = True
     tspec['executables'] = True
     tspec['linker-is-gnu'] = True
@@ -431,8 +434,10 @@ def rust_gen_target(d, thing, wd, arch):
     with open(wd + rustsys + '.json', 'w') as f:
         json.dump(tspec, f, indent=4)
 
-# These are accounted for in tmpdir path names so don't need to be in the task sig
-rust_gen_target[vardepsexclude] += "ABIEXTENSION llvm_cpu"
+RUSTCONFIG_EXCLUDEVARS = ""
+RUSTCONFIG_EXCLUDEVARS:class-native = "ABIEXTENSION llvm_cpu TUNE_RISCV_ABI"
+RUSTCONFIG_EXCLUDEVARS:class-nativesdk = "ABIEXTENSION llvm_cpu TUNE_RISCV_ABI"
+rust_gen_target[vardepsexclude] += "${RUSTCONFIG_EXCLUDEVARS}"
 
 do_rust_gen_targets[vardeps] += "DATA_LAYOUT TARGET_ENDIAN TARGET_POINTER_WIDTH TARGET_C_INT_WIDTH MAX_ATOMIC_WIDTH FEATURES"
 

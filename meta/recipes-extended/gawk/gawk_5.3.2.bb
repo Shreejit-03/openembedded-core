@@ -15,6 +15,9 @@ LICENSE:${PN} = "GPL-3.0-or-later"
 LICENSE:${PN}:append = " ${@bb.utils.contains('PACKAGECONFIG', 'pma-if-64bit', ' & AGPL-3.0-or-later', '', d)}"
 
 PACKAGECONFIG ??= "readline mpfr"
+# Make native builds lean
+PACKAGECONFIG:class-native = ""
+
 PACKAGECONFIG[readline] = "--with-readline,--without-readline,readline"
 PACKAGECONFIG[mpfr] = "--with-mpfr,--without-mpfr, mpfr"
 # pma: persistent memory allocator:
@@ -41,11 +44,19 @@ ALTERNATIVE:${PN} = "awk"
 ALTERNATIVE_TARGET[awk] = "${bindir}/gawk"
 ALTERNATIVE_PRIORITY = "100"
 
-do_install:append() {
+target_tweaks() {
 	# remove the link since we don't package it
 	rm ${D}${bindir}/awk
 	# Strip non-reproducible build flags (containing build paths)
 	sed -i -e 's|^CC.*|CC=""|g' -e 's|^CFLAGS.*|CFLAGS=""|g' ${D}${bindir}/gawkbug
+}
+
+do_install:append:class-target() {
+	target_tweaks
+}
+
+do_install:append:class-nativesdk() {
+	target_tweaks
 }
 
 inherit ptest
@@ -94,4 +105,5 @@ RDEPENDS:${PN}-ptest += "make locale-base-en-us coreutils"
 RDEPENDS:${PN}-ptest:append:libc-glibc = " locale-base-en-us.iso-8859-1"
 RDEPENDS:${PN}-ptest:append:libc-musl = " musl-locales"
 
+PROVIDES:append:class-native = " gawk-replacement-native"
 BBCLASSEXTEND = "native nativesdk"

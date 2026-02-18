@@ -28,7 +28,6 @@ class GoCompileTest(OERuntimeTestCase):
     @OEHasPackage('go')
     @OEHasPackage('go-runtime')
     @OEHasPackage('go-runtime-dev')
-    @OEHasPackage('openssh-scp')
     def test_go_compile(self):
         # Check if go is available
         status, output = self.target.run('which go')
@@ -36,7 +35,7 @@ class GoCompileTest(OERuntimeTestCase):
             self.skipTest('go command not found, output: %s' % output)
 
         # Compile the simple Go program
-        status, output = self.target.run('go build -o /tmp/test /tmp/test.go')
+        status, output = self.target.run('go build -o /tmp/test /tmp/test.go', 600)
         msg = 'go compile failed, output: %s' % output
         self.assertEqual(status, 0, msg=msg)
 
@@ -49,7 +48,6 @@ class GoCompileTest(OERuntimeTestCase):
     @OEHasPackage('go')
     @OEHasPackage('go-runtime')
     @OEHasPackage('go-runtime-dev')
-    @OEHasPackage('openssh-scp')
     def test_go_module(self):
         # Check if go is available
         status, output = self.target.run('which go')
@@ -67,7 +65,7 @@ class GoCompileTest(OERuntimeTestCase):
         self.assertEqual(status, 0, msg=msg)
 
         # Build the module
-        status, output = self.target.run('cd /tmp/hello-go && go build -o hello main.go')
+        status, output = self.target.run('cd /tmp/hello-go && go build -o hello main.go', 600)
         msg = 'go build failed, output: %s' % output
         self.assertEqual(status, 0, msg=msg)
 

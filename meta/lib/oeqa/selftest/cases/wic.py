@@ -13,6 +13,7 @@ import sys
 import unittest
 import hashlib
 import subprocess
+import filecmp
 
 from glob import glob
 from shutil import rmtree, copy
@@ -1657,8 +1658,9 @@ INITRAMFS_IMAGE = "core-image-initramfs-boot"
     def test_extra_partition_plugin(self):
         """Test extra partition plugin"""
         config = dedent("""\
+        IMAGE_EXTRA_PARTITION_FILES_name-foo = "bar.conf"
         IMAGE_EXTRA_PARTITION_FILES_label-foo = "bar.conf;foo.conf"
-        IMAGE_EXTRA_PARTITION_FILES_uuid-e7d0824e-cda3-4bed-9f54-9ef5312d105d = "bar.conf;foobar.conf"
+        IMAGE_EXTRA_PARTITION_FILES_uuid-e7d0824e-cda3-4bed-9f54-9ef5312d105d = "bar.conf;foobar.conf bar2.conf;foobar2.conf bar3.conf bar4.conf"
         IMAGE_EXTRA_PARTITION_FILES = "foo/*"
         WICVARS:append = "\
             IMAGE_EXTRA_PARTITION_FILES_label-foo \
@@ -1668,36 +1670,58 @@ INITRAMFS_IMAGE = "core-image-initramfs-boot"
         self.append_config(config)
 
         deploy_dir = get_bb_var('DEPLOY_DIR_IMAGE')
+        sysroot = get_bb_var('RECIPE_SYSROOT_NATIVE', 'wic-tools')
 
-        testfile = open(os.path.join(deploy_dir, "bar.conf"), "w")
-        testfile.write("test")
-        testfile.close()
+        # Write test files
+        for testfilename in ["bar.conf", "bar2.conf", "bar3.conf", "bar4.conf"]:
+            testfile = open(os.path.join(deploy_dir, testfilename), "w")
+            testfile.write("test %s" % testfilename)
+            testfile.close()
 
+        # Create directory foo/ and testfiles within
         os.mkdir(os.path.join(deploy_dir, "foo"))
-        testfile = open(os.path.join(deploy_dir, "foo", "bar.conf"), "w")
-        testfile.write("test")
-        testfile.close()
+        for testfilename in ["bar.conf", "bar2.conf"]:
+            testfile = open(os.path.join(deploy_dir, "foo", testfilename), "w")
+            testfile.write("test %s" % testfilename)
+            testfile.close()
 
         oldpath = os.environ['PATH']
         os.environ['PATH'] = get_bb_var("PATH", "wic-tools")
 
         try:
             with NamedTemporaryFile("w", suffix=".wks") as wks:
-                wks.writelines(['part / --source extra_partition --ondisk sda --fstype=ext4 --label foo --align 4 --size 5M\n',
-                                'part / --source extra_partition --ondisk sda --fstype=ext4 --uuid e7d0824e-cda3-4bed-9f54-9ef5312d105d --align 4 --size 5M\n',
-                                'part / --source extra_partition --ondisk sda --fstype=ext4 --label bar --align 4 --size 5M\n'])
+                wks.writelines([
+                    'part / --source extra_partition --ondisk sda --sourceparams "name=foo" --align 4 --size 5M\n',
+                    'part / --source extra_partition --ondisk sda --label foo --align 4 --size 5M\n',
+                    'part / --source extra_partition --ondisk sda --fstype=vfat --uuid e7d0824e-cda3-4bed-9f54-9ef5312d105d --align 4 --size 5M\n',
+                    'part / --source extra_partition --ondisk sda --fstype=ext4 --label bar --align 4 --size 5M\n',
+                    'bootloader --ptable gpt\n',
+                ])
                 wks.flush()
                 _, wicimg = self._get_wic(wks.name)
 
-                result = runCmd("wic ls %s | wc -l" % wicimg)
-                self.assertEqual('4', result.output, msg="Expect 3 partitions, not %s" % result.output)
+            result = runCmd("wic ls %s -n %s" % (wicimg, sysroot))
+            partls = result.output.split('\n')[1:]
 
-                for part, file in enumerate(["foo.conf", "foobar.conf", "bar.conf"]):
-                    result = runCmd("wic ls %s:%d | grep -q \"%s\"" % (wicimg, part + 1, file))
-                    self.assertEqual(0, result.status, msg="File '%s' not found in the partition #%d" % (file, part))
+            # Assert the number of partitions is correct
+            self.assertEqual(4, len(partls), msg="Expect 4 partitions, not %s" % result.output)
+
+            # Fstype column from 'wic ls' should be fstype as given in the part command
+            for part_id, part_fs in enumerate(["fat16", "fat16", "fat16", "ext4"]):
+                self.assertIn(part_fs, partls[part_id])
+
+            # For each partition, assert expected files exist
+            for part, part_glob in enumerate([
+                ["bar.conf"],
+                ["foo.conf"],
+                ["foobar.conf", "foobar2.conf", "bar3.conf", "bar4.conf"],
+                ["bar.conf", "bar2.conf"],
+            ]):
+                for part_file in part_glob:
+                    result = runCmd("wic ls %s:%d/%s -n %s" % (wicimg, part + 1, part_file, sysroot))
+                    self.assertEqual(0, result.status, msg="File '%s' not found in the partition #%d" % (part_file, part))
 
             self.remove_config(config)
-
         finally:
             os.environ['PATH'] = oldpath
 
@@ -1905,6 +1929,42 @@ INITRAMFS_IMAGE = "core-image-initramfs-boot"
             self.assertIn("Source parameter 'fill' only works with the '--fixed-size' option, exiting.", result.output)
             self.assertNotEqual(0, result.status)
 
+    def test_diskid_on_msdos_partition(self):
+        """Test diksid on msdos partions"""
+        img = 'core-image-minimal'
+        diskid = "0xdeadbbef"
+        with NamedTemporaryFile("w", suffix=".wks") as wks:
+            wks.writelines(['bootloader --ptable msdos --diskid %s\n' % diskid,
+                            'part /boot --size=100M --active --fstype=ext4 --label boot\n'
+                            'part /     --source rootfs      --fstype=ext4 --label root\n'])
+            wks.flush()
+            cmd = "wic create %s -e %s -o %s" % (wks.name, img, self.resultdir)
+            runCmd(cmd)
+            wksname = os.path.splitext(os.path.basename(wks.name))[0]
+            out = glob(os.path.join(self.resultdir, "%s-*direct" % wksname))
+            self.assertEqual(1, len(out))
+            sysroot = get_bb_var('RECIPE_SYSROOT_NATIVE', 'wic-tools')
+            result = runCmd("%s/usr/sbin/sfdisk -l %s | grep 'Disk identifier:'" % (sysroot, out[0]))
+            self.assertEqual("Disk identifier: %s" % diskid.lower(), result.output)
+
+    def test_diskid_on_gpt_partition(self):
+        """Test diksid on gpt partions"""
+        img = 'core-image-minimal'
+        diskid = "deadbeef-cafe-babe-f00d-cec2ea4eface"
+        with NamedTemporaryFile("w", suffix=".wks") as wks:
+            wks.writelines(['bootloader --ptable gpt --diskid %s\n' % diskid,
+                            'part /boot --size=100M --active --fstype=ext4 --label boot\n'
+                            'part /     --source rootfs      --fstype=ext4 --label root\n'])
+            wks.flush()
+            cmd = "wic create %s -e %s -o %s" % (wks.name, img, self.resultdir)
+            runCmd(cmd)
+            wksname = os.path.splitext(os.path.basename(wks.name))[0]
+            out = glob(os.path.join(self.resultdir, "%s-*direct" % wksname))
+            self.assertEqual(1, len(out))
+            sysroot = get_bb_var('RECIPE_SYSROOT_NATIVE', 'wic-tools')
+            result = runCmd("%s/usr/sbin/sfdisk -l %s | grep 'Disk identifier:'" % (sysroot, out[0]))
+            self.assertEqual("Disk identifier: %s" % diskid.upper(), result.output)
+
 class ModifyTests(WicTestCase):
     def test_wic_ls(self):
         """Test listing image content using 'wic ls'"""
@@ -2047,6 +2107,70 @@ class ModifyTests(WicTestCase):
             # check for the file size to validate the copy
             runCmd("wic cp %s:2/etc/fstab %s -n %s" % (images[0], testfile.name, sysroot))
             self.assertTrue(os.stat(testfile.name).st_size > 0, msg="Filesize not as expected %s" % os.stat(testfile.name).st_size)
+
+            # prepare directory structure
+            testdir = os.path.join(self.resultdir, "wic-test-cp-ext-dir")
+            testsubdir = os.path.join(testdir, "subdir")
+            os.makedirs(testsubdir)
+
+            # add a file in the top-level of the directory
+            src_file = os.path.join(testdir, "topfile.txt")
+            with open(src_file, "w") as f:
+                f.write("top-level\n")
+
+            # add file in the subdir
+            src_subfile = os.path.join(testsubdir, "subfile.txt")
+            with open(src_subfile, "w") as f:
+                f.write("sub-level\n")
+
+            # copy directory to the partition root
+            runCmd("wic cp %s %s:2/ -n %s" % (testdir, images[0], sysroot))
+            basedir = os.path.basename(testdir)
+
+            # check if directory is there at partition root
+            result = runCmd("wic ls %s:2/ -n %s" % (images[0], sysroot))
+            root_entries = set(line.split()[-1] for line in result.output.split('\n') if line)
+            self.assertIn(basedir, root_entries, msg="Expected directory not present at root: %s" % root_entries)
+
+            # list INSIDE the copied directory
+            result = runCmd("wic ls %s:2/%s/ -n %s" % (images[0], basedir, sysroot))
+            self.assertEqual(0, result.status,
+                             msg="wic ls inside copied directory failed. Output:\n%s" % result.output)
+            self.assertNotIn("Ext2 inode is not a directory", result.output,
+                             msg="Regression detected (inode not a directory). Output:\n%s" % result.output)
+
+            inside_entries = set(line.split()[-1] for line in result.output.split('\n') if line)
+            self.assertTrue(set(["subdir", "topfile.txt"]).issubset(inside_entries),
+                            msg="Expected entries missing inside dir: %s" % inside_entries)
+
+            # list inside the subdir
+            result = runCmd("wic ls %s:2/%s/subdir/ -n %s" % (images[0], basedir, sysroot))
+            self.assertEqual(0, result.status,
+                             msg="wic ls inside copied subdir failed. Output:\n%s" % result.output)
+            self.assertNotIn("Ext2 inode is not a directory", result.output,
+                             msg="Regression detected (inode not a directory). Output:\n%s" % result.output)
+
+            sub_entries = set(line.split()[-1] for line in result.output.split('\n') if line)
+            self.assertIn("subfile.txt", sub_entries, msg="Expected file missing in subdir: %s" % sub_entries)
+
+            # copy directory from the partition and compare with original
+            outparent = os.path.join(self.resultdir, "wic-test-cp-ext-out")
+            os.makedirs(outparent)
+            runCmd("wic cp %s:2/%s %s -n %s" % (images[0], basedir, outparent, sysroot))
+
+            copied_dir = os.path.join(outparent, basedir)
+            self.assertTrue(os.path.isdir(copied_dir), msg="Copied-back directory not created: %s" % copied_dir)
+
+            copied_file = os.path.join(copied_dir, "topfile.txt")
+            copied_subfile = os.path.join(copied_dir, "subdir", "subfile.txt")
+
+            self.assertTrue(os.path.isfile(copied_file), msg="Missing copied-back file: %s" % copied_file)
+            self.assertTrue(os.path.isfile(copied_subfile), msg="Missing copied-back subfile: %s" % copied_subfile)
+
+            self.assertTrue(filecmp.cmp(src_file, copied_file, shallow=False),
+                            msg="topfile.txt differs after round-trip copy")
+            self.assertTrue(filecmp.cmp(src_subfile, copied_subfile, shallow=False),
+                            msg="subfile.txt differs after round-trip copy")
 
 
     def test_wic_rm_ext(self):

@@ -453,7 +453,7 @@ class GitApplyTree(PatchTree):
         # Prepare git command
         cmd = ["git"]
         GitApplyTree.gitCommandUserOptions(cmd, commituser, commitemail)
-        cmd += ["commit", "-F", tmpfile, "--no-verify"]
+        cmd += ["commit", "-F", tmpfile, "--no-verify", "--no-gpg-sign"]
         # git doesn't like plain email addresses as authors
         if author and '<' in author:
             cmd.append('--author="%s"' % author)
@@ -507,7 +507,7 @@ class GitApplyTree(PatchTree):
             runcmd(['git', 'add'] + files, dir)
         cmd = ["git"]
         GitApplyTree.gitCommandUserOptions(cmd, d=d)
-        cmd += ["commit", "-m", subject, "--no-verify"]
+        cmd += ["commit", "-m", subject, "--no-verify", "--no-gpg-sign"]
         runcmd(cmd, dir)
         GitApplyTree.addNote(dir, "HEAD", GitApplyTree.ignore_commit, d.getVar('PATCH_GIT_USER_NAME'), d.getVar('PATCH_GIT_USER_EMAIL'))
 
@@ -626,7 +626,8 @@ class GitApplyTree(PatchTree):
             try:
                 shellcmd = [patchfilevar, "git", "--work-tree=%s" % reporoot]
                 self.gitCommandUserOptions(shellcmd, self.commituser, self.commitemail)
-                shellcmd += ["am", "-3", "--keep-cr", "--no-scissors", "-p%s" % patch['strippath']]
+                shellcmd += ["am", "--committer-date-is-author-date",
+                             "-3", "--keep-cr", "--no-scissors", "-p%s" % patch['strippath']]
                 return _applypatchhelper(shellcmd, patch, force, reverse, run)
             except CmdError:
                 # Need to abort the git am, or we'll still be within it at the end

@@ -11,6 +11,7 @@ BINV = "15.2.0"
 FILESEXTRAPATHS =. "${FILE_DIRNAME}/gcc:${FILE_DIRNAME}/gcc/backport:"
 
 TOOLCHAIN = "gcc"
+TOOLCHAIN_NATIVE = "gcc"
 
 DEPENDS =+ "mpfr gmp libmpc zlib zstd flex-native"
 NATIVEDEPS = "mpfr-native gmp-native libmpc-native zlib-native flex-native zstd-native"
@@ -71,7 +72,9 @@ SRC_URI = "${BASEURI} \
            file://0023-Fix-install-path-of-linux64.h.patch \
            file://0024-Avoid-hardcoded-build-paths-into-ppc-libgcc.patch \
            file://0025-gcc-testsuite-tweaks-for-mips-OE.patch \
-	   file://0026-fix-pr90579-testcases.patch \
+           file://0026-fix-pr90579-testcases.patch \
+           file://0027-gcc15-pr122394.patch \
+           file://0001-mapper-localhost-might-not-be-known.patch \
 "
 
 UNPACKDIR = "${TMPDIR}/work-shared/gcc-${PV}-${PR}/sources"

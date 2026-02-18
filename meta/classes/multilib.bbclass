@@ -117,6 +117,7 @@ python __anonymous () {
         clsextend.set_filter("PACKAGE_INSTALL", deps=False)
         clsextend.set_filter("PACKAGE_INSTALL_NODEPS", deps=False)
         clsextend.set_filter("LINGUAS_INSTALL", deps=False)
+        clsextend.set_filter("ROOTFS_RO_UNNEEDED", deps=False)
         clsextend.set_filter("RDEPENDS", deps=True)
         pinstall = d.getVar("LINGUAS_INSTALL") + " " + d.getVar("PACKAGE_INSTALL")
         d.setVar("PACKAGE_INSTALL", pinstall)

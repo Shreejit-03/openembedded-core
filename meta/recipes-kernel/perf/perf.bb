@@ -10,8 +10,8 @@ HOMEPAGE = "https://perf.wiki.kernel.org/index.php/Main_Page"
 LICENSE = "GPL-2.0-only"
 
 # remove at next version upgrade or when output changes
-PR = "r1"
-HASHEQUIV_HASH_VERSION .= ".1"
+PR = "r2"
+HASHEQUIV_HASH_VERSION .= ".2"
 
 # zstd is required for kernels 6.14+ when libelf-zstd is detected
 # Respect the coresight machine feature, but note this causes a
@@ -55,7 +55,7 @@ do_configure[depends] += "virtual/kernel:do_shared_workdir"
 
 PROVIDES = "virtual/perf"
 
-inherit linux-kernel-base kernel-arch manpages
+inherit linux-kernel-base kernel-arch manpages pkgconfig
 
 # needed for building the tools/perf Python bindings
 inherit_defer ${@bb.utils.contains('PACKAGECONFIG', 'python', 'python3targetconfig', '', d)}
@@ -178,11 +178,10 @@ do_compile() {
 	# There are two copies of internal headers such as:
 	# libperf/include/internal/xyarray.h and tools/lib/perf/include/internal/xyarray.h
 	# For reproducibile binaries, we need to find one copy, hence force libXXX to be created first
-	for i in api bpf subcmd symbol
+	for i in api bpf subcmd symbol perf
 	do
 		oe_runmake -C ${S}/tools/lib/$i DESTDIR=${B}/lib$i prefix= install_headers V=1
 	done
-	oe_runmake ${B}/libperf/libperf.a V=1
 	oe_runmake all V=1
 }
 
@@ -350,7 +349,6 @@ do_configure:prepend () {
         sed -i 's,CC = $(CROSS_COMPILE)gcc,#CC,' ${S}/tools/perf/Makefile.perf
         sed -i 's,AR = $(CROSS_COMPILE)ar,#AR,' ${S}/tools/perf/Makefile.perf
         sed -i 's,LD = $(CROSS_COMPILE)ld,#LD,' ${S}/tools/perf/Makefile.perf
-        sed -i 's,PKG_CONFIG = $(CROSS_COMPILE)pkg-config,#PKG_CONFIG,' ${S}/tools/perf/Makefile.perf
     fi
     if [ -e "${S}/tools/lib/api/Makefile" ]; then
         sed -i 's,CC = $(CROSS_COMPILE)gcc,#CC,' ${S}/tools/lib/api/Makefile

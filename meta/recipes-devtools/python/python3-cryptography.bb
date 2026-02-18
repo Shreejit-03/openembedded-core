@@ -11,7 +11,7 @@ LDSHARED += "-pthread"
 # NOTE: Make sure to keep this recipe at the same version as python3-cryptography-vectors
 #       Upgrade both recipes at the same time
 require python3-cryptography-common.inc
-SRC_URI[sha256sum] = "4b1654dfc64ea479c242508eb8c724044f1e964a47d1d1cacc5132292d851971"
+SRC_URI[sha256sum] = "bfd019f60f8abc2ed1b9be4ddc21cfef059c841d86d710bb69909a688cbb8f59"
 
 SRC_URI += "file://0001-pyproject.toml-remove-benchmark-disable-option.patch \
             file://check-memfree.py \
@@ -21,6 +21,11 @@ SRC_URI += "file://0001-pyproject.toml-remove-benchmark-disable-option.patch \
 require ${BPN}-crates.inc
 
 inherit pypi python_maturin cargo-update-recipe-crates pkgconfig
+
+PACKAGECONFIG ??= ""
+PACKAGECONFIG[legacy-openssl] = ",,,openssl-ossl-module-legacy"
+
+export CRYPTOGRAPHY_BUILD_OPENSSL_NO_LEGACY = "${@bb.utils.contains('PACKAGECONFIG', 'legacy-openssl', '0', '1', d)}"
 
 DEPENDS += " \
     python3-cffi-native \

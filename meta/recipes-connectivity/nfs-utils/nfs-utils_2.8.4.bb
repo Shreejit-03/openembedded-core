@@ -55,14 +55,11 @@ EXTRA_OECONF = "--with-statduser=rpcuser \
 
 LDFLAGS += "-lsqlite3 -levent"
 
-PACKAGECONFIG ??= "tcp-wrappers \
-    ${@bb.utils.filter('DISTRO_FEATURES', 'ipv6 systemd', d)} \
+PACKAGECONFIG ??= "${@bb.utils.filter('DISTRO_FEATURES', 'ipv6 systemd', d)} \
 "
 
-PACKAGECONFIG:remove:libc-musl = "tcp-wrappers"
 #krb5 is available in meta-oe
 PACKAGECONFIG[gssapi] = "--with-krb5=${STAGING_EXECPREFIXDIR} --enable-gss --enable-svcgss,--disable-gss --disable-svcgss,krb5"
-PACKAGECONFIG[tcp-wrappers] = "--with-tcp-wrappers,--without-tcp-wrappers,tcp-wrappers"
 PACKAGECONFIG[ipv6] = "--enable-ipv6,--disable-ipv6,"
 # libdevmapper is available in meta-oe
 PACKAGECONFIG[nfsv41] = "--enable-nfsv41,--disable-nfsv41,libdevmapper,libdevmapper"
@@ -124,12 +121,6 @@ do_configure:prepend() {
 		-e 's,udev_rulesdir = .*,udev_rulesdir = ${nonarch_base_libdir}/udev/rules.d/,g' \
 		${S}/utils/mount/Makefile.am ${S}/utils/nfsdcltrack/Makefile.am \
 		${S}/systemd/Makefile.am ${S}/tools/nfsrahead/Makefile.am
-}
-
-# Make clean needed because the package comes with
-# precompiled 64-bit objects that break the build
-do_compile:prepend() {
-	make clean
 }
 
 # Works on systemd only

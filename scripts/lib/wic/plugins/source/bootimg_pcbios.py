@@ -273,7 +273,7 @@ class BootimgPcbiosPlugin(SourcePlugin):
         for install_cmd in cmds:
             exec_cmd(install_cmd)
 
-        du_cmd = "du -bks %s" % hdddir
+        du_cmd = "du --apparent-size -ks %s" % hdddir
         out = exec_cmd(du_cmd)
         blocks = int(out.split()[0])
 
@@ -305,7 +305,7 @@ class BootimgPcbiosPlugin(SourcePlugin):
         chmod_cmd = "chmod 644 %s" % bootimg
         exec_cmd(chmod_cmd)
 
-        du_cmd = "du -Lbks %s" % bootimg
+        du_cmd = "du --apparent-size -Lks %s" % bootimg
         out = exec_cmd(du_cmd)
         bootimg_size = out.split()[0]
 
