@@ -387,6 +387,7 @@ def add_download_packages(d, doc, recipe):
                 package.checksums.append(c)
 
         package.downloadLocation = oe.spdx_common.fetch_data_to_uri(f, f.name)
+        package.versionInfo = d.getVar("PV")
         doc.packages.append(package)
         doc.add_relationship(doc, "DESCRIBES", package)
         # In the future, we might be able to do more fancy dependencies,
