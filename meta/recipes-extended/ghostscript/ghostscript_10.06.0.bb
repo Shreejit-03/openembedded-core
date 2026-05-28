@@ -25,6 +25,8 @@ SRC_URI = "https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/downlo
            file://ghostscript-9.16-Werror-return-type.patch \
            file://avoid-host-contamination.patch \
            file://0001-Fix-32-bit-build.patch \
+           file://out-of-tree.patch \
+           file://0001-psi-ztype.c-replace-static-const-double-with-macros-.patch \
            "
 
 SRC_URI[sha256sum] = "5bd6da34794928cc7e616f288e32bd0be7f9a5ca2d3c206a0af2c19a4e3a318f"
@@ -33,13 +35,13 @@ PACKAGECONFIG ??= ""
 PACKAGECONFIG[gtk] = "--enable-gtk,--disable-gtk,gtk+3"
 PACKAGECONFIG[libidn] = "--with-libidn,--without-libidn,libidn"
 PACKAGECONFIG[libpaper] = "--with-libpaper,--without-libpaper,libpaper"
-PACKAGECONFIG[x11] = "--with-x --x-includes=${STAGING_INCDIR} --x-libraries=${STAGING_LIBDIR}, \
-                      --without-x, virtual/libx11 libxext libxt"
+PACKAGECONFIG[x11] = "--with-x, --without-x, virtual/libx11 libxext libxt"
 
 EXTRA_OECONF = "--with-jbig2dec \
                 --with-fontpath=${datadir}/fonts \
                 CUPSCONFIG="${STAGING_BINDIR_CROSS}/cups-config" \
                 PKGCONFIG=pkg-config \
+                CFLAGSAUX=-std=gnu17 \
                 "
 
 EXTRA_OECONF:append:mipsarcho32 = " --with-large_color_index=0"
@@ -47,10 +49,9 @@ EXTRA_OECONF:append:mipsarcho32 = " --with-large_color_index=0"
 EXTRA_OECONF:append:armv7a = "${@bb.utils.contains('TUNE_FEATURES','neon','',' --disable-neon',d)}"
 EXTRA_OECONF:append:armv7ve = "${@bb.utils.contains('TUNE_FEATURES','neon','',' --disable-neon',d)}"
 
-TARGET_CFLAGS += "-std=gnu17 -Wno-error=declaration-after-statement -fPIC"
+TARGET_CFLAGS += "-Wno-error=declaration-after-statement -fPIC"
 
-# Uses autoconf but not automake, can't do out-of-tree
-inherit autotools-brokensep pkgconfig
+inherit autotools pkgconfig
 
 # Prune the source tree of libraries that we're using our packaging of, so that
 # ghostscript can't link to them. Can't prune zlib as that's needed for the
